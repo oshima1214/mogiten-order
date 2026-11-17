@@ -28,10 +28,6 @@ async function myOrder(token: string) {
   return rows[0].r as Record<string, unknown> | null;
 }
 
-async function cancel(token: string) {
-  const rows = await t.asAnon<{ r: string }>('select cancel_my_order($1::uuid) as r', [token]);
-  return rows[0].r;
-}
 
 beforeEach(async () => {
   t = await createTestDb();
@@ -127,10 +123,10 @@ describe('get_my_order', () => {
     expect(readyOne?.aheadCount).toBe(0);
   });
 
-  it.each(['delivered', 'cancelled'])('returns null for a %s order', async (status) => {
+  it.each(['delivered', 'cancelled'])('reports a %s order so the phone can tell the customer', async (status) => {
     const a = await placeOrder([{ menu_item_id: juice, quantity: 1 }]);
     await t.asOwner('update orders set status = $1 where token = $2', [status, a.token]);
-    expect(await myOrder(a.token)).toBeNull();
+    expect(await myOrder(a.token)).toMatchObject({ number: 1, status, aheadCount: 0 });
   });
 
   it("returns null for a previous day's order", async () => {
@@ -144,26 +140,12 @@ describe('get_my_order', () => {
   });
 });
 
-describe('cancel_my_order', () => {
-  it('cancels a cooking order', async () => {
+describe('cancelling', () => {
+  it('is not available to customers (staff only)', async () => {
     const a = await placeOrder([{ menu_item_id: juice, quantity: 1 }]);
-    expect(await cancel(a.token)).toBe('cancelled');
-    const rows = await t.asOwner<{ status: string; cancelled_at: unknown }>(
-      'select status, cancelled_at from orders where token = $1',
-      [a.token],
+    await expect(t.asAnon('select cancel_my_order($1::uuid)', [a.token])).rejects.toThrow(
+      /does not exist|permission denied/,
     );
-    expect(rows[0].status).toBe('cancelled');
-    expect(rows[0].cancelled_at).not.toBeNull();
-  });
-
-  it('refuses once the order is ready', async () => {
-    const a = await placeOrder([{ menu_item_id: juice, quantity: 1 }]);
-    await t.asOwner("update orders set status = 'ready' where token = $1", [a.token]);
-    expect(await cancel(a.token)).toBe('not_cancellable');
-  });
-
-  it('reports unknown tokens', async () => {
-    expect(await cancel('00000000-0000-0000-0000-000000000000')).toBe('not_found');
   });
 });
 

@@ -12,9 +12,10 @@ type Props = {
   onSubmit: () => void;
   submitting: boolean;
   error: string | null;
+  notice: string | null;
 };
 
-export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error }: Props) {
+export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice }: Props) {
   const totals = cartTotals(cart, menu);
 
   return (
@@ -23,6 +24,12 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         <p className="text-[13px] font-medium text-sub">{shopName}</p>
         <h1 className="text-[34px] font-bold tracking-tight">メニュー</h1>
       </header>
+
+      {notice && (
+        <p role="alert" className="mx-4 mb-3 rounded-2xl bg-wait-soft px-4 py-3 text-[15px] font-semibold text-wait-ink">
+          {notice}
+        </p>
+      )}
 
       <ul className="flex flex-1 flex-col gap-3 px-4 pb-4">
         {menu.length === 0 && <li className="card p-5 text-center text-sub">ただいま準備中です</li>}

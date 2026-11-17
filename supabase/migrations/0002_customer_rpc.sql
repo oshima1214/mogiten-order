@@ -1,5 +1,6 @@
 -- Customer-facing functions. They run as the owner (security definer) so customers
 -- never need direct access to the orders tables; the token is the only key to an order.
+-- Customers cannot cancel: cancelling is staff-only (staff_update_order).
 
 create or replace function public.place_order(p_items jsonb) returns json
 language plpgsql security definer set search_path = public
@@ -60,8 +61,10 @@ as $$
 declare
   v_order orders%rowtype;
 begin
+  -- Finished orders (delivered/cancelled) are reported too, so the phone can tell a
+  -- staff cancellation apart from a normal hand-over before it forgets the token.
   select * into v_order from orders
-  where token = p_token and business_date = app_today() and status in ('cooking', 'ready');
+  where token = p_token and business_date = app_today();
   if not found then
     return null;
   end if;
@@ -86,24 +89,6 @@ begin
 end;
 $$;
 
-create or replace function public.cancel_my_order(p_token uuid) returns text
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_status text;
-begin
-  select status into v_status from orders where token = p_token for update;
-  if not found then
-    return 'not_found';
-  end if;
-  if v_status <> 'cooking' then
-    return 'not_cancellable';
-  end if;
-  update orders set status = 'cancelled', cancelled_at = now() where token = p_token;
-  return 'cancelled';
-end;
-$$;
-
-revoke all on function public.place_order(jsonb), public.get_my_order(uuid), public.cancel_my_order(uuid) from public;
-grant execute on function public.place_order(jsonb), public.get_my_order(uuid), public.cancel_my_order(uuid)
+revoke all on function public.place_order(jsonb), public.get_my_order(uuid) from public;
+grant execute on function public.place_order(jsonb), public.get_my_order(uuid)
   to anon, authenticated, service_role;
