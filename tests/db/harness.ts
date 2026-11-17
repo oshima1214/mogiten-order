@@ -1,4 +1,4 @@
-import { PGlite } from '@electric-sql/pglite';
+import { PGlite, type PGliteInterface } from '@electric-sql/pglite';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '../..');
 const migrationsDir = path.join(root, 'supabase/migrations');
 
 export type TestDb = {
-  db: PGlite;
+  db: PGliteInterface;
   asAnon<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
   asService<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
   /** Runs as the owner (the role migrations run as) — for seeding and inspecting test state. */
