@@ -24,8 +24,9 @@ export function ReadyView({ order }: { order: MyOrder }) {
           </svg>
           <h1 className="mt-2 text-[34px] font-bold">できました</h1>
           <p className="text-[120px] leading-none font-bold tracking-tighter">{order.number}</p>
-          <p className="mt-2 text-[17px] leading-relaxed">
-            金券 {order.totalTickets}枚 をご用意のうえ、
+          <p className="mt-2 rounded-2xl bg-white/15 px-6 py-3 text-[34px] font-bold">金券 {order.totalTickets}枚</p>
+          <p className="text-[17px] leading-relaxed">
+            金券をご用意のうえ、
             <br />
             受け取り口までお越しください
           </p>

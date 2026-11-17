@@ -74,12 +74,6 @@ describe('staff_update_order', () => {
     await expect(act(o.id, 'complete')).rejects.toThrow('invalid_transition');
   });
 
-  it('rejects complete after the customer cancelled', async () => {
-    const o = await order([[juice, 1]]);
-    await t.asAnon('select cancel_my_order($1::uuid)', [o.token]);
-    await expect(act(o.id, 'complete')).rejects.toThrow('invalid_transition');
-  });
-
   it('rejects an unknown action', async () => {
     const o = await order([[juice, 1]]);
     await expect(act(o.id, 'eat')).rejects.toThrow('invalid_transition');

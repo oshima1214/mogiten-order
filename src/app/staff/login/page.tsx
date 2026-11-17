@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { safeNextPath } from '@/lib/auth/safeNext';
 
 export default function StaffLoginPage() {
   const [passcode, setPasscode] = useState('');
@@ -18,8 +19,7 @@ export default function StaffLoginPage() {
     }).catch(() => null);
     setBusy(false);
     if (res?.status === 204) {
-      const next = new URLSearchParams(window.location.search).get('next');
-      window.location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/staff';
+      window.location.assign(safeNextPath(new URLSearchParams(window.location.search).get('next')));
       return;
     }
     setError(res ? '合言葉が違います' : '接続できませんでした。もう一度お試しください');

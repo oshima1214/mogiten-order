@@ -1,6 +1,6 @@
 export type Valid<T> = { ok: true; value: T } | { ok: false; error: string };
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // Vercel rejects request bodies over 4.5MB
 export const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
 function validName(input: unknown): string | null {
@@ -38,6 +38,6 @@ export function validateShopName(input: unknown): Valid<string> {
 
 export function validateImage(file: { type: string; size: number }): string | null {
   if (!(file.type in IMAGE_TYPES)) return 'JPEG・PNG・WebPの画像を選んでください';
-  if (file.size > MAX_IMAGE_BYTES) return '画像は5MB以下にしてください';
+  if (file.size > MAX_IMAGE_BYTES) return '画像は4MB以下にしてください';
   return null;
 }

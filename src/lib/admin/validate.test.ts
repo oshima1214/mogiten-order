@@ -29,8 +29,8 @@ describe('validateMenuInput', () => {
 describe('validateImage', () => {
   it('rejects other formats', () =>
     expect(validateImage({ type: 'image/gif', size: 100 })).toBe('JPEG・PNG・WebPの画像を選んでください'));
-  it('rejects files over 5MB', () =>
-    expect(validateImage({ type: 'image/png', size: 5 * 1024 * 1024 + 1 })).toBe('画像は5MB以下にしてください'));
+  it('rejects files over 4MB (Vercel caps request bodies at 4.5MB)', () =>
+    expect(validateImage({ type: 'image/png', size: 4 * 1024 * 1024 + 1 })).toBe('画像は4MB以下にしてください'));
   it.each(['image/jpeg', 'image/png', 'image/webp'])('accepts %s', (type) =>
     expect(validateImage({ type, size: 1024 })).toBeNull());
 });

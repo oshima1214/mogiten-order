@@ -6,9 +6,6 @@ type Props = {
   shopName: string;
   order: MyOrder;
   persistent: boolean;
-  onCancel: () => void;
-  cancelling: boolean;
-  notice: string | null;
 };
 
 export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'dark' }) {
@@ -28,7 +25,7 @@ export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'd
   );
 }
 
-export function WaitingView({ shopName, order, persistent, onCancel, cancelling, notice }: Props) {
+export function WaitingView({ shopName, order, persistent }: Props) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 pt-12 pb-8">
       <p className="mx-1 text-[13px] font-medium text-sub">{shopName}</p>
@@ -69,26 +66,12 @@ export function WaitingView({ shopName, order, persistent, onCancel, cancelling,
         </div>
       </section>
 
-      {notice && (
-        <p role="alert" className="mx-1 text-sm font-semibold text-danger">
-          {notice}
-        </p>
-      )}
       <p className="mx-1 text-[13px] leading-relaxed text-sub">
         {persistent
           ? 'この画面は自動で更新されます。閉じても、もう一度QRコードを読むとこの画面に戻れます。'
           : 'この画面は自動で更新されます。この画面を閉じると注文を確認できなくなります。'}
       </p>
-
-      <div className="flex-1" />
-      <button
-        type="button"
-        onClick={onCancel}
-        disabled={cancelling}
-        className="h-12 rounded-[14px] bg-card text-[17px] font-semibold text-danger disabled:opacity-40"
-      >
-        注文を取り消す
-      </button>
+      <p className="mx-1 text-[13px] leading-relaxed text-sub">注文の変更・取り消しは店頭のスタッフにお声がけください。</p>
     </div>
   );
 }

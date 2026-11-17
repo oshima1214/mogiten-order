@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { shrinkImage } from '@/lib/admin/resize';
+import { validateImage } from '@/lib/admin/validate';
 import { menuImageUrl } from '@/lib/menu/imageUrl';
 import type { MenuItem } from '@/lib/types';
 
@@ -46,7 +48,13 @@ export function MenuRow({ item, isFirst, isLast, onChanged, onMove, onMessage }:
       }),
     );
 
-  async function upload(file: File) {
+  async function upload(original: File) {
+    const file = await shrinkImage(original);
+    const invalid = validateImage(file);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     const form = new FormData();
     form.append('file', file);
     await run(() => fetch(`/api/admin/menu/${item.id}/image`, { method: 'POST', body: form }));

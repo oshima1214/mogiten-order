@@ -34,9 +34,3 @@ export async function fetchMyOrder(token: string): Promise<MyOrder | null> {
   if (error) throw error;
   return (data as MyOrder | null) ?? null;
 }
-
-export async function cancelMyOrder(token: string): Promise<'cancelled' | 'not_cancellable' | 'not_found'> {
-  const { data, error } = await getBrowserClient().rpc('cancel_my_order', { p_token: token });
-  if (error) throw error;
-  return data as 'cancelled' | 'not_cancellable' | 'not_found';
-}

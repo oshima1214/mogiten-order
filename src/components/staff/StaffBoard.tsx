@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { latestOnly, STALE } from '@/lib/latest';
 import { useShopChanges } from '@/lib/realtime/useShopChanges';
 import { itemTotals } from '@/lib/staff/board';
 import type { MenuItem, StaffAction, StaffOrder } from '@/lib/types';
@@ -11,6 +12,7 @@ import { CookingCard, ReadyCard } from './OrderCard';
 type Board = { cooking: StaffOrder[]; ready: StaffOrder[]; menu: MenuItem[] };
 
 export function StaffBoard() {
+  const latest = useRef(latestOnly());
   const [board, setBoard] = useState<Board | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
@@ -19,17 +21,22 @@ export function StaffBoard() {
   const [nowMs, setNowMs] = useState(0);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/staff/orders', { cache: 'no-store' }).catch(() => null);
+    const res = await latest.current(
+      fetch('/api/staff/orders', { cache: 'no-store' })
+        .then(async (r) => ({ status: r.status, ok: r.ok, body: r.ok ? ((await r.json()) as Board) : null }))
+        .catch(() => null),
+    );
+    if (res === STALE) return;
     if (res?.status === 401) {
       router.replace('/staff/login?next=/staff');
       return;
     }
-    if (res?.ok) setBoard(await res.json());
+    if (res?.body) setBoard(res.body);
     setNowMs(Date.now());
   }, [router]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     void load();
     const tick = window.setInterval(() => setNowMs(Date.now()), 30_000);
     return () => window.clearInterval(tick);
