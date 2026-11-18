@@ -41,3 +41,57 @@ body {
     opacity: 0.4;
   }
 }
+
+/* Waiting-screen cooking animation (CookingAnimation.tsx) */
+.cooking-anim * {
+  transform-box: fill-box;
+}
+.cooking-chara {
+  transform-origin: 50% 100%;
+  animation: cooking-bounce 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes cooking-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+  50% {
+    transform: translateY(-16px) scale(0.97, 1.03);
+  }
+}
+.cooking-steam {
+  opacity: 0;
+  animation: cooking-steam 2.1s ease-in infinite;
+}
+@keyframes cooking-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  30% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+}
+.cooking-sound {
+  animation: cooking-sound 1s ease-in-out infinite alternate;
+}
+@keyframes cooking-sound {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cooking-anim * {
+    animation: none !important;
+  }
+  .cooking-steam {
+    opacity: 0.6;
+  }
+}
