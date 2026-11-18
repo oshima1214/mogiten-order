@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { postJson } from '@/lib/http';
 import { latestOnly, STALE } from '@/lib/latest';
 import { useShopChanges } from '@/lib/realtime/useShopChanges';
 import { itemTotals } from '@/lib/staff/board';
@@ -77,7 +78,7 @@ export function StaffBoard() {
     latest.current.invalidate();
     pending.current++;
     await withBusy(key, async () => {
-      const res = await send().catch(() => null);
+      const res = await send();
       if (!res?.ok) setToast(onFail(res));
     });
     pending.current--;
@@ -89,12 +90,7 @@ export function StaffBoard() {
     void optimistic(
       order.id,
       (b) => applyStaffAction(b, order.id, action, new Date().toISOString()),
-      () =>
-        fetch(`/api/staff/orders/${order.id}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action }),
-        }),
+      () => postJson(`/api/staff/orders/${order.id}`, { action }),
       (res) => (res?.status === 409 ? '他の端末で先に操作されました' : '操作できませんでした。もう一度お試しください'),
     );
   }
@@ -103,12 +99,7 @@ export function StaffBoard() {
     void optimistic(
       item.id,
       (b) => applySoldOut(b, item.id, !item.isSoldOut),
-      () =>
-        fetch(`/api/staff/menu/${item.id}/sold-out`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ isSoldOut: !item.isSoldOut }),
-        }),
+      () => postJson(`/api/staff/menu/${item.id}/sold-out`, { isSoldOut: !item.isSoldOut }),
       () => '切り替えられませんでした。もう一度お試しください',
     );
   }
