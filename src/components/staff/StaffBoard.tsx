@@ -6,13 +6,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { latestOnly, STALE } from '@/lib/latest';
 import { useShopChanges } from '@/lib/realtime/useShopChanges';
 import { itemTotals } from '@/lib/staff/board';
+import { applySoldOut, applyStaffAction, type StaffBoardState } from '@/lib/staff/optimistic';
 import type { MenuItem, StaffAction, StaffOrder } from '@/lib/types';
 import { CookingCard, ReadyCard } from './OrderCard';
 
-type Board = { cooking: StaffOrder[]; ready: StaffOrder[]; menu: MenuItem[] };
+type Board = StaffBoardState;
 
 export function StaffBoard() {
   const latest = useRef(latestOnly());
+  // Actions still waiting for the server; refetches are not applied meanwhile so the
+  // optimistic board is not overwritten by data read before the change was saved.
+  const pending = useRef(0);
   const [board, setBoard] = useState<Board | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
@@ -26,7 +30,7 @@ export function StaffBoard() {
         .then(async (r) => ({ status: r.status, ok: r.ok, body: r.ok ? ((await r.json()) as Board) : null }))
         .catch(() => null),
     );
-    if (res === STALE) return;
+    if (res === STALE || pending.current > 0) return;
     if (res?.status === 401) {
       router.replace('/staff/login?next=/staff');
       return;
@@ -62,30 +66,51 @@ export function StaffBoard() {
     }
   }
 
+  /** Shows the change at once, then saves it; on failure re-reads the real state. */
+  async function optimistic(
+    key: string,
+    apply: (b: Board) => Board,
+    send: () => Promise<Response | null>,
+    onFail: (res: Response | null) => string,
+  ) {
+    setBoard((b) => (b ? apply(b) : b));
+    latest.current.invalidate();
+    pending.current++;
+    await withBusy(key, async () => {
+      const res = await send().catch(() => null);
+      if (!res?.ok) setToast(onFail(res));
+    });
+    pending.current--;
+    await load();
+  }
+
   function act(order: StaffOrder, action: StaffAction) {
     if (action === 'cancel' && !window.confirm(`${order.number}番の注文を取り消しますか？`)) return;
-    void withBusy(order.id, async () => {
-      const res = await fetch(`/api/staff/orders/${order.id}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action }),
-      }).catch(() => null);
-      if (res?.status === 409) setToast('他の端末で先に操作されました');
-      else if (!res?.ok) setToast('操作できませんでした。もう一度お試しください');
-      await load();
-    });
+    void optimistic(
+      order.id,
+      (b) => applyStaffAction(b, order.id, action, new Date().toISOString()),
+      () =>
+        fetch(`/api/staff/orders/${order.id}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action }),
+        }),
+      (res) => (res?.status === 409 ? '他の端末で先に操作されました' : '操作できませんでした。もう一度お試しください'),
+    );
   }
 
   function toggleSoldOut(item: MenuItem) {
-    void withBusy(item.id, async () => {
-      const res = await fetch(`/api/staff/menu/${item.id}/sold-out`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ isSoldOut: !item.isSoldOut }),
-      }).catch(() => null);
-      if (!res?.ok) setToast('切り替えられませんでした。もう一度お試しください');
-      await load();
-    });
+    void optimistic(
+      item.id,
+      (b) => applySoldOut(b, item.id, !item.isSoldOut),
+      () =>
+        fetch(`/api/staff/menu/${item.id}/sold-out`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ isSoldOut: !item.isSoldOut }),
+        }),
+      () => '切り替えられませんでした。もう一度お試しください',
+    );
   }
 
   if (!board) return <p className="m-auto text-sub">読み込み中…</p>;
