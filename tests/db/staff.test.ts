@@ -175,12 +175,36 @@ describe('sales_summary', () => {
 });
 
 describe('admin functions', () => {
-  it('hides an item that has orders instead of deleting it', async () => {
-    await order([[juice, 1]]);
+  it('deletes an item that has orders and keeps the order lines', async () => {
+    const o = await order([[juice, 1]]);
     const rows = await t.asService<{ r: string }>('select admin_delete_menu_item($1::uuid) as r', [juice]);
-    expect(rows[0].r).toBe('hidden');
-    const item = await t.asOwner<{ is_visible: boolean }>('select is_visible from menu_items where id = $1', [juice]);
-    expect(item).toEqual([{ is_visible: false }]);
+    expect(rows[0].r).toBe('deleted');
+    expect(await t.asOwner('select 1 from menu_items where id = $1', [juice])).toHaveLength(0);
+
+    const board = await t.asService<{ r: { cooking: { items: unknown[] }[] } }>('select staff_list_orders() as r');
+    expect(board[0].r.cooking[0].items).toEqual([{ name: 'ジュース', quantity: 1 }]);
+    const mine = await t.asAnon<{ r: { items: unknown[] } }>('select get_my_order($1::uuid) as r', [o.token]);
+    expect(mine[0].r.items).toEqual([{ name: 'ジュース', quantity: 1 }]);
+  });
+
+  it('lists deleted items last', async () => {
+    const o = await order([[yakisoba, 1], [juice, 2]]);
+    await t.asService('select admin_delete_menu_item($1::uuid)', [yakisoba]);
+    const mine = await t.asAnon<{ r: { items: unknown[] } }>('select get_my_order($1::uuid) as r', [o.token]);
+    expect(mine[0].r.items).toEqual([
+      { name: 'ジュース', quantity: 2 },
+      { name: '焼きそば', quantity: 1 },
+    ]);
+  });
+
+  it('keeps sales for deleted items', async () => {
+    const o = await order([[yakisoba, 2]]);
+    await act(o.id, 'complete');
+    await act(o.id, 'deliver');
+    await t.asService('select admin_delete_menu_item($1::uuid)', [yakisoba]);
+    const rows = await t.asService<{ r: { items: unknown[]; ticketsTotal: number } }>('select sales_summary(null) as r');
+    expect(rows[0].r.items).toEqual([{ name: '焼きそば', quantity: 2, tickets: 6 }]);
+    expect(rows[0].r.ticketsTotal).toBe(6);
   });
 
   it('deletes an item without orders', async () => {
@@ -196,6 +220,33 @@ describe('admin functions', () => {
     const rows = await t.asOwner<{ id: string; sort_order: number }>('select id, sort_order from menu_items');
     const byId = Object.fromEntries(rows.map((r) => [r.id, r.sort_order]));
     expect(byId).toEqual({ [c]: 0, [yakisoba]: 1, [juice]: 2 });
+  });
+});
+
+describe('admin_reset_orders', () => {
+  it('removes every order and restarts numbering, keeping the menu', async () => {
+    const a = await order([[juice, 1]]);
+    await order([[yakisoba, 1]]);
+    const c = await order([[juice, 2]]);
+    await act(c.id, 'complete');
+    await act(c.id, 'deliver');
+    const menuBefore = await t.asOwner<{ n: number }>('select count(*)::int as n from menu_items');
+    const sentBefore = await sentCount();
+
+    await t.asService('select admin_reset_orders()');
+
+    for (const table of ['orders', 'order_items', 'order_counters']) {
+      const n = await t.asOwner<{ n: number }>(`select count(*)::int as n from ${table}`);
+      expect(n[0].n, table).toBe(0);
+    }
+    expect(await t.asOwner<{ n: number }>('select count(*)::int as n from menu_items')).toEqual(menuBefore);
+    expect(await t.asOwner('select shop_name from settings')).toHaveLength(1);
+    expect(await sentCount()).toBeGreaterThan(sentBefore);
+
+    const old = await t.asAnon<{ r: unknown }>('select get_my_order($1::uuid) as r', [a.token]);
+    expect(old[0].r).toBeNull();
+    const next = await order([[juice, 1]]);
+    expect(next.number).toBe(1);
   });
 });
 
@@ -227,6 +278,7 @@ describe('staff function permissions', () => {
     "select staff_update_order('00000000-0000-0000-0000-000000000000'::uuid, 'complete')",
     "select admin_delete_menu_item('00000000-0000-0000-0000-000000000000'::uuid)",
     'select admin_reorder_menu(array[]::uuid[])',
+    'select admin_reset_orders()',
   ])('anon cannot run: %s', async (sql) => {
     await expect(t.asAnon(sql)).rejects.toThrow(/permission denied/);
   });
