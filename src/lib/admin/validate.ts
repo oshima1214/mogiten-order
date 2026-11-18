@@ -41,3 +41,6 @@ export function validateImage(file: { type: string; size: number }): string | nu
   if (file.size > MAX_IMAGE_BYTES) return '画像は4MB以下にしてください';
   return null;
 }
+
+/** Word staff must type to wipe all order data. */
+export const RESET_CONFIRM_WORD = '削除';

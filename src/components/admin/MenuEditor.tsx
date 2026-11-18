@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { MenuItem } from '@/lib/types';
 import { MenuRow } from './MenuRow';
+import { ResetOrders } from './ResetOrders';
 
 type Data = { shopName: string; menu: MenuItem[] };
 
@@ -18,7 +19,6 @@ export function MenuEditor() {
   const [data, setData] = useState<Data | null>(null);
   const [shopName, setShopName] = useState('');
   const [shopMsg, setShopMsg] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
@@ -109,12 +109,6 @@ export function MenuEditor() {
         {shopMsg && <p className="w-full text-sm font-semibold text-sub">{shopMsg}</p>}
       </form>
 
-      {message && (
-        <p role="status" className="rounded-xl bg-wait-soft px-4 py-3 text-sm font-semibold text-wait-ink">
-          {message}
-        </p>
-      )}
-
       <ul className="flex flex-col gap-3">
         {data.menu.length === 0 && <li className="card p-5 text-sub">まだ商品がありません。下から追加してください</li>}
         {data.menu.map((item, i) => (
@@ -127,7 +121,6 @@ export function MenuEditor() {
               await load();
             }}
             onMove={(dir) => void move(i, dir)}
-            onMessage={setMessage}
           />
         ))}
       </ul>
@@ -159,6 +152,8 @@ export function MenuEditor() {
         </div>
         {addError && <p role="alert" className="text-sm font-semibold text-danger">{addError}</p>}
       </form>
+
+      <ResetOrders />
     </div>
   );
 }

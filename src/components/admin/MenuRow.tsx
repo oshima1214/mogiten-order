@@ -12,7 +12,6 @@ type Props = {
   isLast: boolean;
   onChanged: () => Promise<void>;
   onMove: (dir: -1 | 1) => void;
-  onMessage: (text: string) => void;
 };
 
 async function errorOf(res: Response | null): Promise<string> {
@@ -21,7 +20,7 @@ async function errorOf(res: Response | null): Promise<string> {
   return body?.error && !/^[a-z_]+$/.test(body.error) ? body.error : '保存できませんでした。もう一度お試しください';
 }
 
-export function MenuRow({ item, isFirst, isLast, onChanged, onMove, onMessage }: Props) {
+export function MenuRow({ item, isFirst, isLast, onChanged, onMove }: Props) {
   const [name, setName] = useState(item.name);
   const [price, setPrice] = useState(String(item.priceTickets));
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +60,8 @@ export function MenuRow({ item, isFirst, isLast, onChanged, onMove, onMessage }:
   }
 
   async function remove() {
-    if (!window.confirm(`「${item.name}」を削除しますか？`)) return;
-    const res = await run(() => fetch(`/api/admin/menu/${item.id}`, { method: 'DELETE' }));
-    const body = res?.ok ? ((await res.json()) as { result: string }) : null;
-    if (body?.result === 'hidden') onMessage('注文履歴があるため、削除の代わりに非表示にしました');
+    if (!window.confirm(`「${item.name}」を削除しますか？売上の記録は残ります`)) return;
+    await run(() => fetch(`/api/admin/menu/${item.id}`, { method: 'DELETE' }));
   }
 
   return (
