@@ -12,7 +12,7 @@
 
 ## 1. Supabase の準備
 
-1. [Supabase](https://supabase.com/) でプロジェクトを作成します(リージョンは Tokyo がおすすめ)。
+1. [Supabase](https://supabase.com/) でプロジェクトを作成します。**Region は必ず Northeast Asia (Tokyo) を選んでください。** アプリのサーバーも東京(`vercel.json` の `hnd1`)で動くので、遠いリージョンだとボタンを押してからの反応が遅くなります。リージョンは後から変えられません。
 2. ダッシュボードの **SQL Editor** で、次のファイルの中身を **この順番で** 1つずつ貼り付けて実行します。
    1. `supabase/migrations/0001_schema.sql`
    2. `supabase/migrations/0002_customer_rpc.sql`
@@ -49,6 +49,16 @@
 4. **Deploy** を押します。以後は GitHub に push するたびに自動で更新されます。
 
 > Vercel の無料(Hobby)プランは **非営利の個人利用** が条件です。使う前に規約を確認してください。
+
+### Supabase を作り直す(リージョンを変えたいとき)
+
+Supabase のリージョンは後から変えられないため、新しいプロジェクトに引っ越します。注文・売上のデータは移りません(本番前に行ってください)。
+
+1. 無料プランは動いているプロジェクトが2つまでです。足りなければ、古いプロジェクトを **一時停止(Project Settings → General → Pause project)** します。
+2. 新しいプロジェクトを **Tokyo** で作り、「1. Supabase の準備」の 2〜4 を行います(SQL は 0001 から順にすべて)。
+3. Vercel の Settings → Environment Variables で `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY` を新しい値に差し替え、Redeploy します。
+4. `/admin` でメニュー・写真・店名を登録し直します。
+5. 新しい方で注文〜受渡済まで動くことを確かめたら、古いプロジェクトを削除します。
 
 ## 3. 当日の使い方
 
