@@ -36,4 +36,15 @@ describe('latestOnly', () => {
     expect(await p1).toBe(STALE);
     expect(await p2).toBe('new');
   });
+
+  it('invalidate() discards responses started before it', async () => {
+    const run = latestOnly();
+    const first = deferred<string>();
+    const p1 = run(first.promise);
+    run.invalidate();
+    const p2 = run(Promise.resolve('after'));
+    first.resolve('before');
+    expect(await p1).toBe(STALE);
+    expect(await p2).toBe('after');
+  });
 });
