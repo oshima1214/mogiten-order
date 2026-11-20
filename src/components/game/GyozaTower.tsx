@@ -3,47 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { browserBestStore } from '@/lib/game/bestScore';
 import { dropBlock, stepSwing, swingSpeed, type Block } from '@/lib/game/tower';
+import { cameraTarget, needsRedraw } from '@/lib/game/view';
+import { createCanvas2dRenderer } from './renderers/canvas2d';
+import type { Debris, Placed, TowerRenderer } from './renderers/types';
 
 type Phase = 'ready' | 'playing' | 'over';
 
-/** A placed block in the tower; level 0 is the base on the plate. */
-type Placed = Block & { level: number };
-type Debris = Block & { y: number; vy: number; rot: number; vr: number };
-
 const START_WIDTH = 0.5;
-const BLOCK_H = 0.1; // block height as a fraction of screen width
 const SWING_GAP = 3; // swinging block floats this many block-heights above the top
-
-function drawGyoza(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  // Half-moon dumpling sitting with its flat, browned bottom at y + h.
-  ctx.beginPath();
-  ctx.moveTo(x, y + h);
-  ctx.bezierCurveTo(x + w * 0.08, y - h * 0.15, x + w * 0.92, y - h * 0.15, x + w, y + h);
-  ctx.closePath();
-  ctx.fillStyle = '#F7E6BF';
-  ctx.fill();
-  ctx.lineWidth = Math.max(1.5, h * 0.06);
-  ctx.strokeStyle = '#C99A55';
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + h * 0.15, y + h - ctx.lineWidth);
-  ctx.lineTo(x + w - h * 0.15, y + h - ctx.lineWidth);
-  ctx.lineWidth = h * 0.16;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#B9702C';
-  ctx.stroke();
-  // pleats
-  const pleats = Math.max(1, Math.floor(w / (h * 0.7)));
-  ctx.lineWidth = Math.max(1, h * 0.05);
-  ctx.strokeStyle = '#D9B97E';
-  for (let i = 1; i <= pleats; i++) {
-    const px = x + (w * i) / (pleats + 1);
-    ctx.beginPath();
-    ctx.moveTo(px, y + h * 0.12);
-    ctx.quadraticCurveTo(px + h * 0.12, y + h * 0.3, px, y + h * 0.48);
-    ctx.stroke();
-  }
-}
 
 export function GyozaTower() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,6 +19,7 @@ export function GyozaTower() {
   const [best, setBest] = useState(0);
   const [perfectAt, setPerfectAt] = useState(0);
   const store = useRef<ReturnType<typeof browserBestStore> | null>(null);
+  const perfectMs = useRef(-Infinity);
 
   // Mutable game world, read by the animation loop.
   const world = useRef({
@@ -98,18 +66,17 @@ export function GyozaTower() {
   useEffect(() => {
     resetWorld();
     const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
+    let renderer: TowerRenderer | null = null;
     let raf = 0;
     let last = performance.now();
+    let dirty = true;
+    let disposed = false;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(canvas.clientWidth * dpr);
-      canvas.height = Math.round(canvas.clientHeight * dpr);
+      renderer?.resize(canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio);
+      dirty = true;
     };
-    resize();
     const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
 
     const frame = (now: number) => {
       // Clamp so a long pause (hidden tab) does not teleport the blocks.
@@ -134,7 +101,10 @@ export function GyozaTower() {
             } else {
               w.tower.push({ ...result.placed, level: top.level + 1 });
               if (result.cut) w.debris.push({ ...result.cut, y: top.level + 1, vy: 0, rot: 0, vr: result.cut.x < result.placed.x ? -3 : 3 });
-              if (result.perfect) setPerfectAt(now);
+              if (result.perfect) {
+                perfectMs.current = now;
+                setPerfectAt(now);
+              }
               setScore(w.tower.length - 1);
               w.swing = { x: 0, width: result.placed.width };
               w.dir = 1;
@@ -152,53 +122,59 @@ export function GyozaTower() {
         p.rot += p.vr * dt;
       }
       w.debris = w.debris.filter((p) => p.y > w.camera - 12);
-      // Keep the top of the tower around 55% of the screen height.
-      const targetCam = Math.max(0, w.tower[w.tower.length - 1].level - 3);
-      w.camera += (targetCam - w.camera) * Math.min(1, dt * 5);
+      const target = cameraTarget(w.tower[w.tower.length - 1].level);
+      w.camera += (target - w.camera) * Math.min(1, dt * 5);
+      if (Math.abs(target - w.camera) < 0.001) w.camera = target;
 
-      // ---- draw ----
-      const W = canvas.width;
-      const H = canvas.height;
-      const unit = W; // 1 world unit = screen width
-      const bh = BLOCK_H * unit;
-      const groundY = H * 0.86;
-      const yOf = (level: number) => groundY - (level - w.camera + 1) * bh; // top edge of a block at `level`
-      ctx.clearRect(0, 0, W, H);
-
-      // plate
-      const plateY = yOf(-1) + bh * 0.1;
-      if (plateY < H + bh) {
-        ctx.fillStyle = '#E8E8ED';
-        ctx.beginPath();
-        ctx.ellipse(W / 2, plateY + bh * 0.25, W * 0.42, bh * 0.35, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      for (const b of w.tower) {
-        const y = yOf(b.level);
-        if (y > H || y < -bh) continue;
-        drawGyoza(ctx, b.x * unit, y, b.width * unit, bh);
-      }
-      if (w.phase === 'playing') {
-        const sw = w.dropping ? w.dropping.block : w.swing;
-        const level = w.dropping ? w.dropping.y : top.level + 1 + SWING_GAP;
-        drawGyoza(ctx, sw.x * unit, yOf(level), sw.width * unit, bh);
-      }
-      for (const p of w.debris) {
-        const y = yOf(p.y);
-        ctx.save();
-        ctx.translate((p.x + p.width / 2) * unit, y + bh / 2);
-        ctx.rotate(p.rot);
-        drawGyoza(ctx, (-p.width / 2) * unit, -bh / 2, p.width * unit, bh);
-        ctx.restore();
+      const perfectAge = (now - perfectMs.current) / 1000;
+      if (
+        renderer &&
+        needsRedraw({ playing: w.phase === 'playing', debris: w.debris.length, camera: w.camera, target, perfectAge, dirty })
+      ) {
+        dirty = false;
+        const top2 = w.tower[w.tower.length - 1];
+        renderer.draw({
+          tower: w.tower,
+          swing:
+            w.phase === 'playing'
+              ? w.dropping
+                ? { block: w.dropping.block, level: w.dropping.y }
+                : { block: w.swing, level: top2.level + 1 + SWING_GAP }
+              : null,
+          debris: w.debris,
+          camera: w.camera,
+          perfectAge,
+        });
       }
       raf = requestAnimationFrame(frame);
     };
-    raf = requestAnimationFrame(frame);
+
+    // 3D when the phone supports it (Three.js is downloaded only now), flat 2D otherwise.
+    (async () => {
+      try {
+        const { createThreeRenderer } = await import('./renderers/three');
+        renderer = createThreeRenderer(canvas);
+        canvas.dataset.renderer = '3d';
+      } catch {
+        renderer = createCanvas2dRenderer(canvas);
+        canvas.dataset.renderer = '2d';
+      }
+      if (disposed) {
+        renderer.dispose();
+        return;
+      }
+      resize();
+      ro.observe(canvas);
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    })();
+
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      renderer?.dispose();
     };
-     
   }, []);
 
   const showPerfect = perfectAt > 0 && phase === 'playing';
