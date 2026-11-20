@@ -19,9 +19,15 @@ function Steam({ x, delay }: { x: number; delay: number }) {
   );
 }
 
-export function CookingAnimation() {
+export function CookingAnimation({ className = '' }: { className?: string }) {
   return (
-    <svg className="cooking-anim" role="img" aria-label="餃子を焼いています" width="300" height="170" viewBox="0 0 300 170">
+    <svg
+      className={`cooking-anim ${className}`}
+      role="img"
+      aria-label="餃子を焼いています"
+      viewBox="0 0 300 170"
+      preserveAspectRatio="xMidYMid meet"
+    >
       {/* pan */}
       <ellipse cx="140" cy="128" rx="118" ry="34" fill="#2C2C30" />
       <ellipse cx="140" cy="122" rx="104" ry="26" fill="#45454B" />
