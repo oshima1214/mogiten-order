@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
+import type { GameBanner } from '@/lib/game/banner';
 import { GyozaTower } from './GyozaTower';
 
 type Props = {
-  /** The customer's number once their order is ready; shows the pick-up banner. */
-  readyNumber: number | null;
+  /** News about the order to show on top of the game (ready / cancelled). */
+  banner: GameBanner;
   onClose: () => void;
 };
 
-export function GameOverlay({ readyNumber, onClose }: Props) {
+export function GameOverlay({ banner, onClose }: Props) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -20,16 +21,23 @@ export function GameOverlay({ readyNumber, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-ground" role="dialog" aria-label="餃子タワー">
-      {readyNumber !== null && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center justify-center gap-3 bg-done px-4 py-4 text-white"
-          role="alert"
-        >
-          <span className="text-[17px] font-bold">できました! {readyNumber}番</span>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-[15px] font-semibold">受け取りへ</span>
-        </button>
+      {banner && (
+        <div role="alert">
+          <button
+            type="button"
+            onClick={onClose}
+            className={`flex w-full items-center justify-center gap-3 px-4 py-4 ${
+              banner.kind === 'ready' ? 'bg-done text-white' : 'bg-wait-soft text-wait-ink'
+            }`}
+          >
+            <span className="text-[17px] font-bold">
+              {banner.kind === 'ready' ? `できました! ${banner.number}番` : banner.text}
+            </span>
+            <span className="shrink-0 rounded-full bg-white/30 px-3 py-1 text-[15px] font-semibold">
+              {banner.kind === 'ready' ? '受け取りへ' : '閉じる'}
+            </span>
+          </button>
+        </div>
       )}
       <div className="flex items-center justify-between px-4 pt-3">
         <p className="text-[15px] font-semibold text-sub">待ち時間に遊ぶ</p>

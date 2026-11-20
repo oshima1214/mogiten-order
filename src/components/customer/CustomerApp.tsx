@@ -1,7 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { GameBoundary } from '@/components/game/GameBoundary';
+import { gameBanner } from '@/lib/game/banner';
 import type { Cart } from '@/lib/cart';
 import { fetchMyOrder, fetchShop, placeOrder } from '@/lib/customer/api';
 import { isMenuChangedError, messageForOrderError } from '@/lib/customer/errors';
@@ -15,9 +16,25 @@ import { ReadyView } from './ReadyView';
 import { WaitingView } from './WaitingView';
 
 // Loaded only when someone opens the game, so the menu stays light.
-const GameOverlay = dynamic(() => import('@/components/game/GameOverlay').then((m) => m.GameOverlay), {
-  ssr: false,
-});
+const GameOverlay = lazy(() => import('@/components/game/GameOverlay').then((m) => ({ default: m.GameOverlay })));
+
+function GameLoading({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-ground" role="dialog" aria-label="餃子タワー">
+      <div className="flex justify-end px-4 pt-3">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="ゲームを閉じる"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-xl"
+        >
+          ×
+        </button>
+      </div>
+      <p className="m-auto text-sub">ゲームを読み込み中…</p>
+    </div>
+  );
+}
 
 /** Drops cart entries whose item is gone or sold out. */
 function pruneCart(cart: Cart, menu: MenuItem[]): Cart {
@@ -41,6 +58,7 @@ export function CustomerApp() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [gameOpen, setGameOpen] = useState(false);
+  const [gameError, setGameError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const s = (store.current ??= browserTokenStore());
@@ -106,13 +124,26 @@ export function CustomerApp() {
       <p className="m-auto text-sub">読み込み中…</p>
     );
   }
+  const closeGame = () => setGameOpen(false);
   const game = gameOpen && (
-    <GameOverlay readyNumber={order?.status === 'ready' ? order.number : null} onClose={() => setGameOpen(false)} />
+    <GameBoundary
+      onError={() => {
+        setGameOpen(false);
+        setGameError('ゲームを読み込めませんでした。電波の良い場所でもう一度お試しください');
+      }}
+    >
+      <Suspense fallback={<GameLoading onClose={closeGame} />}>
+        <GameOverlay banner={gameBanner(order, notice)} onClose={closeGame} />
+      </Suspense>
+    </GameBoundary>
   );
-  const openGame = () => setGameOpen(true);
+  const openGame = () => {
+    setGameError(null);
+    setGameOpen(true);
+  };
 
   if (order?.status === 'ready') return <>{game}<ReadyView order={order} /></>;
-  if (order) return <>{game}<WaitingView shopName={shopName} order={order} persistent={persistent} onPlay={openGame} /></>;
+  if (order) return <>{game}<WaitingView shopName={shopName} order={order} persistent={persistent} onPlay={openGame} playError={gameError} /></>;
   return (
     <>
       {game}
@@ -129,6 +160,7 @@ export function CustomerApp() {
         error={menuError}
         notice={notice}
         onPlay={openGame}
+        playError={gameError}
       />
     </>
   );
