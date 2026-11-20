@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cartLines, cartTotals, MAX_QUANTITY, setQuantity, type Cart } from '@/lib/cart';
 import { menuImageUrl } from '@/lib/menu/imageUrl';
 import type { MenuItem } from '@/lib/types';
-import { PlayButton } from '@/components/game/PlayButton';
+import { PlayLink } from '@/components/game/PlayButton';
 import { ConfirmSheet } from './ConfirmSheet';
 
 type Props = {
@@ -30,8 +30,6 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         <p className="text-[13px] font-medium text-sub">{shopName}</p>
         <h1 className="text-[34px] font-bold tracking-tight">メニュー</h1>
       </header>
-
-      <PlayButton onPlay={onPlay} error={playError} className="mx-4 mb-3" />
 
       {notice && (
         <p role="alert" className="mx-4 mb-3 rounded-2xl bg-wait-soft px-4 py-3 text-[15px] font-semibold text-wait-ink">
@@ -88,6 +86,8 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
           );
         })}
       </ul>
+
+      <PlayLink onPlay={onPlay} error={playError} className="pb-2" />
 
       <footer className="sticky bottom-0 flex flex-col gap-3 border-t border-[#d2d2d7] bg-white/90 px-5 pt-4 pb-8 backdrop-blur">
         {error && (
