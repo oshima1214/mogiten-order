@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cartTotals, setQuantity, toOrderPayload } from './cart';
+import { cartLines, cartTotals, setQuantity, toOrderPayload } from './cart';
 import type { MenuItem } from './types';
 
 const item = (id: string, priceTickets: number): MenuItem => ({
@@ -27,4 +27,14 @@ describe('cartTotals', () => {
 describe('toOrderPayload', () => {
   it('maps the cart to RPC input', () =>
     expect(toOrderPayload({ a: 2 })).toEqual([{ menu_item_id: 'a', quantity: 2 }]));
+});
+
+describe('cartLines', () => {
+  const menu = [item('a', 3), item('b', 1), item('c', 2)];
+  it('lists chosen items in menu order with their tickets', () =>
+    expect(cartLines({ c: 1, a: 2 }, menu)).toEqual([
+      { id: 'a', name: 'a', quantity: 2, tickets: 6 },
+      { id: 'c', name: 'c', quantity: 1, tickets: 2 },
+    ]));
+  it('skips ids that are not on the menu', () => expect(cartLines({ zzz: 1 }, menu)).toEqual([]));
 });
