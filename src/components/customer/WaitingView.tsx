@@ -9,6 +9,7 @@ type Props = {
   order: MyOrder;
   persistent: boolean;
   onPlay: () => void;
+  playError: string | null;
 };
 
 export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'dark' }) {
@@ -28,7 +29,7 @@ export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'd
   );
 }
 
-export function WaitingView({ shopName, order, persistent, onPlay }: Props) {
+export function WaitingView({ shopName, order, persistent, onPlay, playError }: Props) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 pt-12 pb-8">
       <p className="mx-1 text-[13px] font-medium text-sub">{shopName}</p>
@@ -70,7 +71,7 @@ export function WaitingView({ shopName, order, persistent, onPlay }: Props) {
         </div>
       </section>
 
-      <PlayButton onPlay={onPlay} />
+      <PlayButton onPlay={onPlay} error={playError} />
 
       <p className="mx-1 text-[13px] leading-relaxed text-sub">
         {persistent

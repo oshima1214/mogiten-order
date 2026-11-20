@@ -15,9 +15,10 @@ type Props = {
   error: string | null;
   notice: string | null;
   onPlay: () => void;
+  playError: string | null;
 };
 
-export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice, onPlay }: Props) {
+export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice, onPlay, playError }: Props) {
   const totals = cartTotals(cart, menu);
 
   return (
@@ -27,7 +28,7 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         <h1 className="text-[34px] font-bold tracking-tight">メニュー</h1>
       </header>
 
-      <PlayButton onPlay={onPlay} className="mx-4 mb-3" />
+      <PlayButton onPlay={onPlay} error={playError} className="mx-4 mb-3" />
 
       {notice && (
         <p role="alert" className="mx-4 mb-3 rounded-2xl bg-wait-soft px-4 py-3 text-[15px] font-semibold text-wait-ink">
