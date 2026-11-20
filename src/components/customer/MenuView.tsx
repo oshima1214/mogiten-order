@@ -1,9 +1,11 @@
 'use client';
 
-import { cartTotals, MAX_QUANTITY, setQuantity, type Cart } from '@/lib/cart';
+import { useState } from 'react';
+import { cartLines, cartTotals, MAX_QUANTITY, setQuantity, type Cart } from '@/lib/cart';
 import { menuImageUrl } from '@/lib/menu/imageUrl';
 import type { MenuItem } from '@/lib/types';
 import { PlayButton } from '@/components/game/PlayButton';
+import { ConfirmSheet } from './ConfirmSheet';
 
 type Props = {
   shopName: string;
@@ -20,6 +22,7 @@ type Props = {
 
 export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice, onPlay, playError }: Props) {
   const totals = cartTotals(cart, menu);
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
@@ -98,7 +101,7 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         </div>
         <button
           type="button"
-          onClick={onSubmit}
+          onClick={() => setConfirming(true)}
           disabled={totals.count === 0 || submitting}
           className="btn-primary h-13"
         >
@@ -106,6 +109,17 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         </button>
         <p className="text-center text-xs text-sub">お支払いは受け取り時に金券でお願いします</p>
       </footer>
+      {confirming && totals.count > 0 && (
+        <ConfirmSheet
+          lines={cartLines(cart, menu)}
+          totalTickets={totals.tickets}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            onSubmit();
+          }}
+        />
+      )}
     </div>
   );
 }

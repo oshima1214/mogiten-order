@@ -26,3 +26,12 @@ export function cartTotals(cart: Cart, menu: MenuItem[]): { count: number; ticke
 export function toOrderPayload(cart: Cart): { menu_item_id: string; quantity: number }[] {
   return Object.entries(cart).map(([menu_item_id, quantity]) => ({ menu_item_id, quantity }));
 }
+
+export type CartLine = { id: string; name: string; quantity: number; tickets: number };
+
+/** The chosen items, in menu order, for the order confirmation sheet. */
+export function cartLines(cart: Cart, menu: MenuItem[]): CartLine[] {
+  return menu
+    .filter((m) => (cart[m.id] ?? 0) > 0)
+    .map((m) => ({ id: m.id, name: m.name, quantity: cart[m.id], tickets: cart[m.id] * m.priceTickets }));
+}
