@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Cart } from '@/lib/cart';
 import { fetchMyOrder, fetchShop, placeOrder } from '@/lib/customer/api';
@@ -12,6 +13,11 @@ import type { MenuItem, MyOrder } from '@/lib/types';
 import { MenuView } from './MenuView';
 import { ReadyView } from './ReadyView';
 import { WaitingView } from './WaitingView';
+
+// Loaded only when someone opens the game, so the menu stays light.
+const GameOverlay = dynamic(() => import('@/components/game/GameOverlay').then((m) => m.GameOverlay), {
+  ssr: false,
+});
 
 /** Drops cart entries whose item is gone or sold out. */
 function pruneCart(cart: Cart, menu: MenuItem[]): Cart {
@@ -34,6 +40,7 @@ export function CustomerApp() {
   const [submitting, setSubmitting] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [gameOpen, setGameOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const s = (store.current ??= browserTokenStore());
@@ -99,21 +106,30 @@ export function CustomerApp() {
       <p className="m-auto text-sub">読み込み中…</p>
     );
   }
-  if (order?.status === 'ready') return <ReadyView order={order} />;
-  if (order) return <WaitingView shopName={shopName} order={order} persistent={persistent} />;
+  const game = gameOpen && (
+    <GameOverlay readyNumber={order?.status === 'ready' ? order.number : null} onClose={() => setGameOpen(false)} />
+  );
+  const openGame = () => setGameOpen(true);
+
+  if (order?.status === 'ready') return <>{game}<ReadyView order={order} /></>;
+  if (order) return <>{game}<WaitingView shopName={shopName} order={order} persistent={persistent} onPlay={openGame} /></>;
   return (
-    <MenuView
-      shopName={shopName}
-      menu={menu}
-      cart={cart}
-      onCartChange={(c) => {
-        setCart(c);
-        setMenuError(null);
-      }}
-      onSubmit={submit}
-      submitting={submitting}
-      error={menuError}
-      notice={notice}
-    />
+    <>
+      {game}
+      <MenuView
+        shopName={shopName}
+        menu={menu}
+        cart={cart}
+        onCartChange={(c) => {
+          setCart(c);
+          setMenuError(null);
+        }}
+        onSubmit={submit}
+        submitting={submitting}
+        error={menuError}
+        notice={notice}
+        onPlay={openGame}
+      />
+    </>
   );
 }

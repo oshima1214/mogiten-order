@@ -3,6 +3,7 @@
 import { cartTotals, MAX_QUANTITY, setQuantity, type Cart } from '@/lib/cart';
 import { menuImageUrl } from '@/lib/menu/imageUrl';
 import type { MenuItem } from '@/lib/types';
+import { PlayButton } from '@/components/game/PlayButton';
 
 type Props = {
   shopName: string;
@@ -13,9 +14,10 @@ type Props = {
   submitting: boolean;
   error: string | null;
   notice: string | null;
+  onPlay: () => void;
 };
 
-export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice }: Props) {
+export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitting, error, notice, onPlay }: Props) {
   const totals = cartTotals(cart, menu);
 
   return (
@@ -24,6 +26,8 @@ export function MenuView({ shopName, menu, cart, onCartChange, onSubmit, submitt
         <p className="text-[13px] font-medium text-sub">{shopName}</p>
         <h1 className="text-[34px] font-bold tracking-tight">メニュー</h1>
       </header>
+
+      <PlayButton onPlay={onPlay} className="mx-4 mb-3" />
 
       {notice && (
         <p role="alert" className="mx-4 mb-3 rounded-2xl bg-wait-soft px-4 py-3 text-[15px] font-semibold text-wait-ink">

@@ -2,11 +2,13 @@
 
 import type { MyOrder } from '@/lib/types';
 import { CookingAnimation } from './CookingAnimation';
+import { PlayButton } from '@/components/game/PlayButton';
 
 type Props = {
   shopName: string;
   order: MyOrder;
   persistent: boolean;
+  onPlay: () => void;
 };
 
 export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'dark' }) {
@@ -26,7 +28,7 @@ export function OrderLines({ order, tone }: { order: MyOrder; tone: 'light' | 'd
   );
 }
 
-export function WaitingView({ shopName, order, persistent }: Props) {
+export function WaitingView({ shopName, order, persistent, onPlay }: Props) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 pt-12 pb-8">
       <p className="mx-1 text-[13px] font-medium text-sub">{shopName}</p>
@@ -67,6 +69,8 @@ export function WaitingView({ shopName, order, persistent }: Props) {
           <span>金券 {order.totalTickets}枚</span>
         </div>
       </section>
+
+      <PlayButton onPlay={onPlay} />
 
       <p className="mx-1 text-[13px] leading-relaxed text-sub">
         {persistent
